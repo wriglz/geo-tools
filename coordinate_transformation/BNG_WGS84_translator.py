@@ -8,8 +8,21 @@ import pyproj
 
 pyproj.network.set_network_enabled(True)
 
-_bng_to_wgs84 = pyproj.Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
-_wgs84_to_bng = pyproj.Transformer.from_crs("EPSG:4326", "EPSG:27700", always_xy=True)
+# Explicit OSTN15 pipelines — forces use of OSTN15 grid shift.
+# Raises an error at startup if the grid file cannot be found or downloaded.
+_bng_to_wgs84 = pyproj.Transformer.from_pipeline("""
+    proj=pipeline
+    step inv proj=tmerc lat_0=49 lon_0=-2 k=0.9996012717 x_0=400000 y_0=-100000 ellps=airy
+    step proj=hgridshift grids=uk_os_OSTN15_NTv2_OSGBtoETRS.tif
+    step proj=unitconvert xy_in=rad xy_out=deg
+""")
+
+_wgs84_to_bng = pyproj.Transformer.from_pipeline("""
+    proj=pipeline
+    step proj=unitconvert xy_in=deg xy_out=rad
+    step inv proj=hgridshift grids=uk_os_OSTN15_NTv2_OSGBtoETRS.tif
+    step proj=tmerc lat_0=49 lon_0=-2 k=0.9996012717 x_0=400000 y_0=-100000 ellps=airy
+""")
 
 
 def bng_to_wgs84(easting: float, northing: float) -> tuple[float, float]:
